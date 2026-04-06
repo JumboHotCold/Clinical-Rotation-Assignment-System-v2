@@ -1,0 +1,12 @@
+--- Testing /students/ ---
+Students validation FAILED:
+2 validation errors for list[Student]
+0.year_level
+  Field required [type=missing, input_value=<backend.models.Student o...t at 0x0000025D01B0DB80>, input_type=Student]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+1.year_level
+  Field required [type=missing, input_value=<backend.models.Student o...t at 0x0000025D01B0DBB0>, input_type=Student]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+
+--- Testing /assignments/ ---
+No assignments in DB.
