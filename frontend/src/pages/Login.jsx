@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Stethoscope, AlertCircle, RefreshCcw, Activity } from 'lucide-react';
+import { AlertCircle, RefreshCcw, Activity } from 'lucide-react';
 import api, { checkHealth } from '../api';
+import logo from '../assets/SPUS-logo1.webp';
 
 export default function Login() {
   const [username, setUsername] = useState('');
@@ -16,7 +17,7 @@ export default function Login() {
       const isAlive = await checkHealth();
       setServerStatus(isAlive ? 'online' : 'offline');
     };
-    
+
     verifyServer();
     const interval = setInterval(verifyServer, 30000); // Check every 30s
     return () => clearInterval(interval);
@@ -34,7 +35,7 @@ export default function Login() {
       setLoading(false);
       return;
     }
-    
+
     try {
       const response = await api.post('/auth/token', {
         username,
@@ -43,12 +44,12 @@ export default function Login() {
       });
 
       const { access_token, role, user_id, must_change_password } = response.data;
-      
+
       localStorage.setItem('token', access_token);
       localStorage.setItem('role', role);
       localStorage.setItem('user_id', user_id);
       localStorage.setItem('must_change_password', must_change_password);
-      
+
       if (role === 'admin') {
         navigate('/admin');
       } else {
@@ -74,19 +75,17 @@ export default function Login() {
     <div className="flex-center">
       <div className="card card-hover" style={{ maxWidth: '420px', width: '100%', textAlign: 'center', padding: '40px 32px' }}>
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '24px' }}>
-          <div style={{ background: 'var(--primary-gradient)', padding: '16px', borderRadius: '50%', boxShadow: '0 8px 24px rgba(255, 182, 193, 0.5)' }}>
-            <Stethoscope size={36} color="white" />
-          </div>
+          <img src={logo} alt="SPUS Logo" style={{ maxWidth: '80px', height: 'auto' }} />
         </div>
         <h2 style={{ marginBottom: '8px', fontSize: '1.75rem', fontWeight: '700' }}>Welcome Back</h2>
         <p style={{ color: 'var(--text-light)', marginBottom: '32px', fontSize: '0.95rem' }}>Clinical Rotation Management</p>
-        
+
         {/* Server Status Indicator */}
-        <div style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'center', 
-          gap: '8px', 
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '8px',
           marginBottom: '24px',
           padding: '8px 16px',
           borderRadius: '12px',
@@ -101,19 +100,19 @@ export default function Login() {
           {serverStatus === 'offline' && <AlertCircle size={14} />}
           {serverStatus === 'checking' ? 'Checking connection...' : serverStatus === 'online' ? 'Backend System Online' : 'Backend System Offline'}
         </div>
-        
+
         {error && (
           <div className="alert alert-error" style={{ fontSize: '0.9rem', textAlign: 'left' }}>
             <AlertCircle size={18} /> {error}
           </div>
         )}
-        
+
         <form onSubmit={handleLogin} style={{ textAlign: 'left' }}>
           <div style={{ marginBottom: '16px' }}>
             <label className="label">Username or Student ID</label>
-            <input 
-              type="text" 
-              className="input-field" 
+            <input
+              type="text"
+              className="input-field"
               placeholder="e.g. C-2023-001 or admin"
               value={username}
               onChange={(e) => {
@@ -126,7 +125,7 @@ export default function Login() {
                 setUsername(val);
                 setError('');
               }}
-              style={{ 
+              style={{
                 borderColor: isInvalidFormat ? '#FFB6C1' : '',
                 marginBottom: isInvalidFormat ? '4px' : '20px'
               }}
@@ -138,24 +137,24 @@ export default function Login() {
               </span>
             )}
           </div>
-          
+
           <div style={{ marginBottom: '24px' }}>
             <label className="label">Password</label>
-            <input 
-              type="password" 
-              className="input-field" 
+            <input
+              type="password"
+              className="input-field"
               placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
             />
           </div>
-          
+
           <button type="submit" className="btn-primary" style={{ width: '100%' }} disabled={loading}>
             {loading ? 'Authenticating...' : 'Sign In to Portal'}
           </button>
         </form>
-        
+
       </div>
     </div>
   );
