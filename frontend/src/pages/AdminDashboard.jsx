@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LogOut, UsersRound, Hospital, CalendarRange, Plus, AlertTriangle, Trash2, Edit, BarChart, Stethoscope, UserCheck, UserX } from 'lucide-react';
+import Swal from 'sweetalert2';
 import api from '../api';
 
 export default function AdminDashboard() {
@@ -75,16 +76,57 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleDeleteStudent = async (id) => {
-    const warning = "This action is irreversible. Are you sure you want to proceed?";
-    if(!window.confirm(warning)) return;
-    try {
-      await api.delete(`/students/${id}`);
-      showMessage('success', 'Student and all associated records deleted permanently.');
-      fetchDashboardData();
-    } catch (err) {
-      showMessage('error', err.response?.data?.detail || 'Failed to delete student.');
-    }
+  const handleDeleteStudent = async (studentId, studentName) => {
+    const result = await Swal.fire({
+      title: 'Delete Student?',
+      html: `<div style="text-align: left;">
+        <p><strong>${studentName}</strong></p>
+        <p style="color: #d32f2f; margin-top: 12px; font-weight: 500;">⚠️ This action is irreversible and will:</p>
+        <ul style="text-align: left; margin: 8px 0;">
+          <li>Delete the student profile</li>
+          <li>Delete all related assignments</li>
+          <li>Delete all attendance records</li>
+        </ul>
+      </div>`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d32f2f',
+      cancelButtonColor: '#757575',
+      confirmButtonText: 'Yes, Delete Student',
+      cancelButtonText: 'Cancel',
+      reverseButtons: true
+    });
+
+    if (!result.isConfirmed) return;
+
+    // Show loading state
+    Swal.fire({
+      title: 'Deleting...',
+      allowOutsideClick: false,
+      allowEscapeKey: false,
+      didOpen: async () => {
+        Swal.showLoading();
+        try {
+          await api.delete(`/students/${studentId}`);
+          Swal.fire({
+            title: 'Deleted!',
+            text: 'Student and all associated records have been permanently deleted.',
+            icon: 'success',
+            confirmButtonColor: '#4caf50'
+          });
+          fetchDashboardData();
+        } catch (err) {
+          const errorMessage = err.response?.data?.detail || 'Failed to delete student. Please try again.';
+          Swal.fire({
+            title: 'Error',
+            text: errorMessage,
+            icon: 'error',
+            confirmButtonColor: '#d32f2f'
+          });
+          console.error('Delete student error:', err);
+        }
+      }
+    });
   }
 
   const handleToggleStatus = async (student) => {
@@ -111,15 +153,58 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleDeleteArea = async (id) => {
-    if(!window.confirm("This action is irreversible. Are you sure you want to proceed?")) return;
-    try {
-      await api.delete(`/areas/${id}`);
-      showMessage('success', 'Area deleted.');
-      fetchDashboardData();
-    } catch (err) {
-      showMessage('error', err.response?.data?.detail || 'Could not delete area. Check active assignments.');
-    }
+  const handleDeleteArea = async (areaId, areaName) => {
+    const result = await Swal.fire({
+      title: 'Delete Clinical Facility?',
+      html: `<div style="text-align: left;">
+        <p><strong>${areaName}</strong></p>
+        <p style="color: #d32f2f; margin-top: 12px; font-weight: 500;">⚠️ This action is irreversible and will:</p>
+        <ul style="text-align: left; margin: 8px 0;">
+          <li>Delete the facility</li>
+          <li>Delete all related assignments</li>
+          <li>Delete all student attendance records for this facility</li>
+        </ul>
+        <p style="color: #ff6f00; margin-top: 12px; font-weight: 500;">ℹ️ Ensure no active assignments exist before deleting.</p>
+      </div>`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d32f2f',
+      cancelButtonColor: '#757575',
+      confirmButtonText: 'Yes, Delete Facility',
+      cancelButtonText: 'Cancel',
+      reverseButtons: true
+    });
+
+    if (!result.isConfirmed) return;
+
+    // Show loading state
+    Swal.fire({
+      title: 'Deleting...',
+      allowOutsideClick: false,
+      allowEscapeKey: false,
+      didOpen: async () => {
+        Swal.showLoading();
+        try {
+          await api.delete(`/areas/${areaId}`);
+          Swal.fire({
+            title: 'Deleted!',
+            text: 'Clinical facility and all associated records have been permanently deleted.',
+            icon: 'success',
+            confirmButtonColor: '#4caf50'
+          });
+          fetchDashboardData();
+        } catch (err) {
+          const errorMessage = err.response?.data?.detail || 'Failed to delete facility. Please try again.';
+          Swal.fire({
+            title: 'Error',
+            text: errorMessage,
+            icon: 'error',
+            confirmButtonColor: '#d32f2f'
+          });
+          console.error('Delete area error:', err);
+        }
+      }
+    });
   }
 
   const startEditArea = (area) => {
@@ -163,15 +248,56 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleDeleteAssignment = async (id) => {
-    if(!window.confirm("Delete this assignment?")) return;
-    try {
-      await api.delete(`/assignments/${id}`);
-      showMessage('success', 'Assignment deleted.');
-      fetchDashboardData();
-    } catch (err) {
-      showMessage('error', 'Failed to delete assignment');
-    }
+  const handleDeleteAssignment = async (assignmentId, studentName, areaName) => {
+    const result = await Swal.fire({
+      title: 'Delete Assignment?',
+      html: `<div style="text-align: left;">
+        <p><strong>${studentName}</strong> → <strong>${areaName}</strong></p>
+        <p style="color: #d32f2f; margin-top: 12px; font-weight: 500;">⚠️ This action is irreversible and will:</p>
+        <ul style="text-align: left; margin: 8px 0;">
+          <li>Remove the rotation assignment</li>
+          <li>Delete all attendance records for this assignment</li>
+        </ul>
+      </div>`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d32f2f',
+      cancelButtonColor: '#757575',
+      confirmButtonText: 'Yes, Delete Assignment',
+      cancelButtonText: 'Cancel',
+      reverseButtons: true
+    });
+
+    if (!result.isConfirmed) return;
+
+    // Show loading state
+    Swal.fire({
+      title: 'Deleting...',
+      allowOutsideClick: false,
+      allowEscapeKey: false,
+      didOpen: async () => {
+        Swal.showLoading();
+        try {
+          await api.delete(`/assignments/${assignmentId}`);
+          Swal.fire({
+            title: 'Deleted!',
+            text: 'Assignment has been permanently deleted.',
+            icon: 'success',
+            confirmButtonColor: '#4caf50'
+          });
+          fetchDashboardData();
+        } catch (err) {
+          const errorMessage = err.response?.data?.detail || 'Failed to delete assignment. Please try again.';
+          Swal.fire({
+            title: 'Error',
+            text: errorMessage,
+            icon: 'error',
+            confirmButtonColor: '#d32f2f'
+          });
+          console.error('Delete assignment error:', err);
+        }
+      }
+    });
   }
 
   return (
@@ -227,14 +353,14 @@ export default function AdminDashboard() {
             <form onSubmit={handleCreateAssignment} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', alignItems: 'end', marginBottom: '40px' }}>
               <div>
                 <label className="label">Student</label>
-                <select className="input-field" style={{ marginBottom: 0 }} required value={newAssignment.student_id} onChange={e => setNewAssignment({...newAssignment, student_id: e.target.value})}>
+                <select className="input-field" style={{ marginBottom: 0 }} required value={newAssignment.student_id} onChange={e => setNewAssignment({ ...newAssignment, student_id: e.target.value })}>
                   <option value="">Select Student...</option>
                   {students.map(s => <option key={s.id} value={s.id}>{s.first_name} {s.last_name} ({s.student_id_number})</option>)}
                 </select>
               </div>
               <div>
                 <label className="label">Clinical Area</label>
-                <select className="input-field" style={{ marginBottom: 0 }} required value={newAssignment.area_id} onChange={e => setNewAssignment({...newAssignment, area_id: e.target.value})}>
+                <select className="input-field" style={{ marginBottom: 0 }} required value={newAssignment.area_id} onChange={e => setNewAssignment({ ...newAssignment, area_id: e.target.value })}>
                   <option value="">Select Area...</option>
                   {areas.map(a => <option key={a.id} value={a.id}>{a.name} (Cap: {a.max_capacity})</option>)}
                 </select>
@@ -242,28 +368,28 @@ export default function AdminDashboard() {
               <div>
                 <label className="label">Date Range</label>
                 <div style={{ display: 'flex', gap: '8px' }}>
-                  <input type="date" className="input-field" style={{ marginBottom: 0 }} required value={newAssignment.start_date} onChange={e => setNewAssignment({...newAssignment, start_date: e.target.value})} />
-                  <input type="date" className="input-field" style={{ marginBottom: 0 }} required value={newAssignment.end_date} onChange={e => setNewAssignment({...newAssignment, end_date: e.target.value})} />
+                  <input type="date" className="input-field" style={{ marginBottom: 0 }} required value={newAssignment.start_date} onChange={e => setNewAssignment({ ...newAssignment, start_date: e.target.value })} />
+                  <input type="date" className="input-field" style={{ marginBottom: 0 }} required value={newAssignment.end_date} onChange={e => setNewAssignment({ ...newAssignment, end_date: e.target.value })} />
                 </div>
               </div>
               <div style={{ gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
                 <div>
-                    <label className="label">Time Range</label>
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                    <input type="time" className="input-field" style={{ marginBottom: 0 }} required value={newAssignment.shift_start_time} onChange={e => setNewAssignment({...newAssignment, shift_start_time: e.target.value})} />
-                    <input type="time" className="input-field" style={{ marginBottom: 0 }} required value={newAssignment.shift_end_time} onChange={e => setNewAssignment({...newAssignment, shift_end_time: e.target.value})} />
-                    </div>
+                  <label className="label">Time Range</label>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <input type="time" className="input-field" style={{ marginBottom: 0 }} required value={newAssignment.shift_start_time} onChange={e => setNewAssignment({ ...newAssignment, shift_start_time: e.target.value })} />
+                    <input type="time" className="input-field" style={{ marginBottom: 0 }} required value={newAssignment.shift_end_time} onChange={e => setNewAssignment({ ...newAssignment, shift_end_time: e.target.value })} />
+                  </div>
                 </div>
                 <div>
-                    <label className="label">Shift Details</label>
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                        <select className="input-field" style={{ marginBottom: 0, width: '60%' }} value={newAssignment.shift_type} onChange={e => setNewAssignment({...newAssignment, shift_type: e.target.value})}>
-                        <option>Morning</option>
-                        <option>Afternoon</option>
-                        <option>Night</option>
-                        </select>
-                        <button type="submit" className="btn-primary" style={{ flexGrow: 1 }}><Plus size={18} /> Assign</button>
-                    </div>
+                  <label className="label">Shift Details</label>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <select className="input-field" style={{ marginBottom: 0, width: '60%' }} value={newAssignment.shift_type} onChange={e => setNewAssignment({ ...newAssignment, shift_type: e.target.value })}>
+                      <option>Morning</option>
+                      <option>Afternoon</option>
+                      <option>Night</option>
+                    </select>
+                    <button type="submit" className="btn-primary" style={{ flexGrow: 1 }}><Plus size={18} /> Assign</button>
+                  </div>
                 </div>
               </div>
             </form>
@@ -277,11 +403,11 @@ export default function AdminDashboard() {
                     <tr key={a.id}>
                       <td><div style={{ fontWeight: 600 }}>{a.student?.first_name} {a.student?.last_name}</div><div style={{ fontSize: '0.8rem', color: 'var(--text-light)' }}>{a.student?.student_id_number}</div></td>
                       <td>{a.area?.name}</td>
-                      <td>{a.start_date}<br/><span style={{ color: 'var(--text-light)', fontSize: '0.85rem' }}>to {a.end_date}</span></td>
-                      <td>{a.shift_start_time} - {a.shift_end_time}<br/><span style={{ color: 'var(--text-light)', fontSize: '0.85rem' }}>({a.shift_type})</span></td>
+                      <td>{a.start_date}<br /><span style={{ color: 'var(--text-light)', fontSize: '0.85rem' }}>to {a.end_date}</span></td>
+                      <td>{a.shift_start_time} - {a.shift_end_time}<br /><span style={{ color: 'var(--text-light)', fontSize: '0.85rem' }}>({a.shift_type})</span></td>
                       <td><span className="badge badge-active">{a.status}</span></td>
                       <td>
-                        <button onClick={() => handleDeleteAssignment(a.id)} style={{ background: 'none', border: 'none', color: '#E53935', cursor: 'pointer', padding: '8px' }}><Trash2 size={18} /></button>
+                        <button onClick={() => handleDeleteAssignment(a.id, `${a.student?.first_name} ${a.student?.last_name}`, a.area?.name)} style={{ background: 'none', border: 'none', color: '#E53935', cursor: 'pointer', padding: '8px' }}><Trash2 size={18} /></button>
                       </td>
                     </tr>
                   ))}
@@ -297,37 +423,37 @@ export default function AdminDashboard() {
           <div>
             <h2 style={{ marginBottom: '24px' }}>Register New Student</h2>
             <form onSubmit={handleCreateStudent} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', alignItems: 'end', marginBottom: '40px' }}>
-               <div>
+              <div>
                 <label className="label">Student ID (C-)</label>
-                <input type="text" className="input-field" style={{ marginBottom: 0 }} required value={newStudent.student_id_number} onChange={e => setNewStudent({...newStudent, student_id_number: e.target.value.toUpperCase()})} />
-               </div>
-               <div>
+                <input type="text" className="input-field" style={{ marginBottom: 0 }} required value={newStudent.student_id_number} onChange={e => setNewStudent({ ...newStudent, student_id_number: e.target.value.toUpperCase() })} />
+              </div>
+              <div>
                 <label className="label">First Name</label>
-                <input type="text" className="input-field" style={{ marginBottom: 0 }} required value={newStudent.first_name} onChange={e => setNewStudent({...newStudent, first_name: e.target.value})} />
-               </div>
-               <div>
+                <input type="text" className="input-field" style={{ marginBottom: 0 }} required value={newStudent.first_name} onChange={e => setNewStudent({ ...newStudent, first_name: e.target.value })} />
+              </div>
+              <div>
                 <label className="label">Last Name</label>
-                <input type="text" className="input-field" style={{ marginBottom: 0 }} required value={newStudent.last_name} onChange={e => setNewStudent({...newStudent, last_name: e.target.value})} />
-               </div>
-               <div>
+                <input type="text" className="input-field" style={{ marginBottom: 0 }} required value={newStudent.last_name} onChange={e => setNewStudent({ ...newStudent, last_name: e.target.value })} />
+              </div>
+              <div>
                 <label className="label">Program</label>
-                <select className="input-field" style={{ marginBottom: 0 }} required value={newStudent.program} onChange={e => setNewStudent({...newStudent, program: e.target.value})}>
+                <select className="input-field" style={{ marginBottom: 0 }} required value={newStudent.program} onChange={e => setNewStudent({ ...newStudent, program: e.target.value })}>
                   <option>BS Nursing</option>
                 </select>
-               </div>
-               <div>
+              </div>
+              <div>
                 <label className="label">Year Level</label>
-                <select className="input-field" style={{ marginBottom: 0 }} required value={newStudent.year_level} onChange={e => setNewStudent({...newStudent, year_level: e.target.value})}>
+                <select className="input-field" style={{ marginBottom: 0 }} required value={newStudent.year_level} onChange={e => setNewStudent({ ...newStudent, year_level: e.target.value })}>
                   <option>2nd Year</option>
                   <option>3rd Year</option>
                   <option>4th Year</option>
                 </select>
-               </div>
-               <div>
+              </div>
+              <div>
                 <label className="label">Contact Email</label>
-                <input type="email" className="input-field" style={{ marginBottom: 0 }} required value={newStudent.contact_email} onChange={e => setNewStudent({...newStudent, contact_email: e.target.value})} />
-               </div>
-               <button type="submit" className="btn-primary" style={{ marginBottom: 0 }}><Plus size={18} /> Create Profile</button>
+                <input type="email" className="input-field" style={{ marginBottom: 0 }} required value={newStudent.contact_email} onChange={e => setNewStudent({ ...newStudent, contact_email: e.target.value })} />
+              </div>
+              <button type="submit" className="btn-primary" style={{ marginBottom: 0 }}><Plus size={18} /> Create Profile</button>
             </form>
 
             <h3 style={{ borderBottom: '2.5px solid #FFF5F7', paddingBottom: '16px', marginBottom: '24px', color: 'var(--text-dark)' }}>Student Database</h3>
@@ -347,15 +473,15 @@ export default function AdminDashboard() {
                       </td>
                       <td>
                         <div style={{ display: 'flex', gap: '4px' }}>
-                          <button 
-                            onClick={() => handleToggleStatus(s)} 
+                          <button
+                            onClick={() => handleToggleStatus(s)}
                             title={s.status === 'Active' ? 'Deactivate Student' : 'Activate Student'}
                             style={{ background: 'none', border: 'none', color: s.status === 'Active' ? '#9E9E9E' : '#4CAF50', cursor: 'pointer', padding: '8px' }}
                           >
                             {s.status === 'Active' ? <UserX size={18} /> : <UserCheck size={18} />}
                           </button>
-                          <button 
-                            onClick={() => handleDeleteStudent(s.id)} 
+                          <button
+                            onClick={() => handleDeleteStudent(s.id, `${s.first_name} ${s.last_name} (${s.student_id_number})`)}
                             title="Delete Permanently (Irreversible)"
                             style={{ background: 'none', border: 'none', color: '#E53935', cursor: 'pointer', padding: '8px' }}
                           >
@@ -377,15 +503,15 @@ export default function AdminDashboard() {
           <div>
             <h2 style={{ marginBottom: '24px' }}>Add Clinical Facility</h2>
             <form onSubmit={handleCreateArea} style={{ display: 'flex', gap: '20px', alignItems: 'end', marginBottom: '40px' }}>
-               <div style={{ flexGrow: 2 }}>
+              <div style={{ flexGrow: 2 }}>
                 <label className="label">Facility/Area Name</label>
-                <input type="text" className="input-field" style={{ marginBottom: 0 }} required value={newArea.name} onChange={e => setNewArea({...newArea, name: e.target.value})} />
-               </div>
-               <div style={{ flexGrow: 1 }}>
+                <input type="text" className="input-field" style={{ marginBottom: 0 }} required value={newArea.name} onChange={e => setNewArea({ ...newArea, name: e.target.value })} />
+              </div>
+              <div style={{ flexGrow: 1 }}>
                 <label className="label">Max Capacity (Students)</label>
-                <input type="number" min="1" className="input-field" style={{ marginBottom: 0 }} required value={newArea.max_capacity} onChange={e => setNewArea({...newArea, max_capacity: parseInt(e.target.value)})} />
-               </div>
-               <button type="submit" className="btn-primary" style={{ marginBottom: 0 }}><Plus size={18} /> Add Facility</button>
+                <input type="number" min="1" className="input-field" style={{ marginBottom: 0 }} required value={newArea.max_capacity} onChange={e => setNewArea({ ...newArea, max_capacity: parseInt(e.target.value) })} />
+              </div>
+              <button type="submit" className="btn-primary" style={{ marginBottom: 0 }}><Plus size={18} /> Add Facility</button>
             </form>
 
             <h3 style={{ borderBottom: '2.5px solid #FFF5F7', paddingBottom: '16px', marginBottom: '24px', color: 'var(--text-dark)' }}>Registered Facilities</h3>
@@ -419,7 +545,7 @@ export default function AdminDashboard() {
                               <button onClick={() => startEditArea(a)} style={{ background: 'none', border: 'none', color: '#1976D2', cursor: 'pointer', padding: '8px' }} title="Edit">
                                 <Edit size={18} />
                               </button>
-                              <button onClick={() => handleDeleteArea(a.id)} style={{ background: 'none', border: 'none', color: '#E53935', cursor: 'pointer', padding: '8px' }} title="Delete">
+                              <button onClick={() => handleDeleteArea(a.id, a.name)} style={{ background: 'none', border: 'none', color: '#E53935', cursor: 'pointer', padding: '8px' }} title="Delete">
                                 <Trash2 size={18} />
                               </button>
                             </div>

@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
 from . import crud, models, schemas
-from .database import SessionLocal, engine
+from .database import SessionLocal, engine, ensure_schema_columns
 from .routers import auth as auth_router
 from .routers import students
 from .routers import areas
@@ -14,6 +14,9 @@ from .routers import profile
 
 # Create the database tables automatically
 models.Base.metadata.create_all(bind=engine)
+
+# Ensure all schema columns exist (handles migrations)
+ensure_schema_columns()
 
 app = FastAPI(title="Clinical Rotation Assignment API")
 

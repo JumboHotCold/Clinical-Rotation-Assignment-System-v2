@@ -74,20 +74,38 @@ def update_student(db: Session, student_id: int, updates: schemas.StudentUpdate)
     return student
 
 def delete_student(db: Session, student_id: int):
-    student = db.query(models.Student).filter(models.Student.id == student_id).first()
-    if not student: return False
-    
-    # We find the associated user. Deleting the user will cascade 
-    # to the student profile, which in turn cascades to assignments and attendance.
-    user_id = student.user_id
-    db.delete(student)
-    
-    user = db.query(models.User).filter(models.User.id == user_id).first()
-    if user:
-        db.delete(user)
+    """
+    Delete a student and cascade delete all related records.
+    - Deletes the student profile
+    - Deletes all assignments for this student (which cascades to attendance records)
+    - Deletes the associated user account
+    """
+    try:
+        student = db.query(models.Student).filter(models.Student.id == student_id).first()
+        if not student:
+            return False
         
-    db.commit()
-    return True
+        # Get user_id before deleting student (we'll need it to delete the user)
+        user_id = student.user_id
+        
+        # Delete the student profile - this will cascade delete assignments and attendance records
+        # due to cascade="all, delete-orphan" on the Student.assignments relationship
+        db.delete(student)
+        db.flush()  # Ensure cascade operations are executed
+        
+        # Now delete the associated user account
+        if user_id:
+            user = db.query(models.User).filter(models.User.id == user_id).first()
+            if user:
+                db.delete(user)
+        
+        # Commit all changes
+        db.commit()
+        return True
+    except Exception as e:
+        db.rollback()
+        print(f"Error deleting student: {e}")
+        return False
 
 # --- User Profile & Security ---
 
@@ -143,12 +161,27 @@ def update_clinical_area(db: Session, area_id: int, updates: schemas.ClinicalAre
     return area
 
 def delete_clinical_area(db: Session, area_id: int):
-    area = db.query(models.ClinicalArea).filter(models.ClinicalArea.id == area_id).first()
-    if not area: return False
-    
-    db.delete(area)
-    db.commit()
-    return True
+    """
+    Delete a clinical area and cascade delete all related records.
+    - Deletes the clinical area
+    - Deletes all assignments for this area (which cascades to attendance records)
+    due to cascade="all, delete-orphan" on the ClinicalArea.assignments relationship
+    """
+    try:
+        area = db.query(models.ClinicalArea).filter(models.ClinicalArea.id == area_id).first()
+        if not area:
+            return False
+        
+        # Delete the area - this will cascade delete assignments and their attendance records
+        # due to cascade="all, delete-orphan" on the ClinicalArea.assignments relationship
+        db.delete(area)
+        db.flush()  # Ensure cascade operations are executed
+        db.commit()
+        return True
+    except Exception as e:
+        db.rollback()
+        print(f"Error deleting clinical area: {e}")
+        return False
 
 # --- Assignments ---
 
@@ -229,11 +262,24 @@ def update_assignment(db: Session, assignment_id: int, updates: schemas.Assignme
     return assignment
 
 def delete_assignment(db: Session, assignment_id: int):
-    assignment = db.query(models.Assignment).filter(models.Assignment.id == assignment_id).first()
-    if not assignment: return False
-    db.delete(assignment)
-    db.commit()
-    return True
+    """
+    Delete an assignment and cascade delete all related attendance records.
+    """
+    try:
+        assignment = db.query(models.Assignment).filter(models.Assignment.id == assignment_id).first()
+        if not assignment:
+            return False
+        
+        # Delete the assignment - this will cascade delete attendance records
+        # due to cascade="all, delete-orphan" on the Assignment.attendance_records relationship
+        db.delete(assignment)
+        db.flush()  # Ensure cascade operations are executed
+        db.commit()
+        return True
+    except Exception as e:
+        db.rollback()
+        print(f"Error deleting assignment: {e}")
+        return False
 
 # --- Attendance / Clocking ---
 

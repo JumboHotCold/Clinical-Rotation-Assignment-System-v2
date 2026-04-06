@@ -4,6 +4,7 @@ from typing import List
 
 from .. import schemas, crud, models
 from ..auth import get_db, get_current_user, get_current_admin_user
+from ..email_service import send_student_welcome_email
 
 router = APIRouter(prefix="/students", tags=["students"])
 
@@ -12,7 +13,22 @@ def create_student(student: schemas.StudentCreate, db: Session = Depends(get_db)
     db_user = crud.get_user_by_username(db, username=student.student_id_number)
     if db_user:
         raise HTTPException(status_code=400, detail="Student ID already registered")
-    return crud.create_student(db=db, student=student)
+    
+    # Create the student
+    created_student = crud.create_student(db=db, student=student)
+    
+    # Send welcome email with default password
+    default_password = student.password or "password123"
+    student_full_name = f"{created_student.first_name} {created_student.last_name}"
+    
+    send_student_welcome_email(
+        student_email=created_student.contact_email,
+        student_name=student_full_name,
+        default_password=default_password,
+        student_id=created_student.student_id_number
+    )
+    
+    return created_student
 
 @router.get("/", response_model=List[schemas.Student])
 def read_students(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
