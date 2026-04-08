@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LogOut, Stethoscope, CalendarRange, MapPin, Clock, Hospital, User, Settings, Camera, ShieldCheck, X } from 'lucide-react';
+import Swal from 'sweetalert2';
 import api from '../api';
+import AreaStudentsView from '../components/AreaStudentsView';
 
 export default function StudentDashboard() {
   const [assignments, setAssignments] = useState([]);
@@ -10,12 +12,13 @@ export default function StudentDashboard() {
   const [success, setSuccess] = useState('');
   const [profile, setProfile] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [showCoStudents, setShowCoStudents] = useState(false);
   const [forcePasswordChange, setForcePasswordChange] = useState(false);
-  
+
   // Settings Form State
   const [passwordData, setPasswordData] = useState({ current_password: '', new_password: '', confirm_password: '' });
   const [isUpdating, setIsUpdating] = useState(false);
-  
+
   const navigate = useNavigate();
 
   const fetchDashboardData = async () => {
@@ -26,10 +29,10 @@ export default function StudentDashboard() {
         api.get('/students/'),
         api.get('/attendance/')
       ]);
-      
+
       const myStudent = stRes.data.find(s => s.user_id.toString() === my_user_id);
       if (myStudent) {
-         setAssignments(asRes.data.filter(a => a.student_id === myStudent.id));
+        setAssignments(asRes.data.filter(a => a.student_id === myStudent.id));
       }
       setAttendance(attRes.data);
     } catch (err) {
@@ -40,7 +43,7 @@ export default function StudentDashboard() {
   useEffect(() => {
     fetchDashboardData();
     fetchProfile();
-    
+
     // Check if password change is forced
     if (localStorage.getItem('must_change_password') === 'true') {
       setForcePasswordChange(true);
@@ -58,8 +61,21 @@ export default function StudentDashboard() {
   };
 
   const handleLogout = () => {
-    localStorage.clear();
-    navigate('/login');
+    Swal.fire({
+      title: 'Sign Out?',
+      text: 'Are you sure you want to sign out?',
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#D32F2F',
+      cancelButtonColor: '#6B7280',
+      confirmButtonText: 'Yes, sign out',
+      cancelButtonText: 'Cancel'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        localStorage.clear();
+        navigate('/login');
+      }
+    });
   };
 
   const showMessage = (type, msg) => {
@@ -72,7 +88,7 @@ export default function StudentDashboard() {
     const now = new Date();
     const dateVal = now.toISOString().split('T')[0];
     const timeVal = now.toTimeString().split(' ')[0]; // HH:MM:SS
-    
+
     try {
       await api.post(`/attendance/clock-${type}?assignment_id=${assignmentId}&date_val=${dateVal}&time_${type}=${timeVal}`);
       showMessage('success', `Successfully clocked ${type}!`);
@@ -88,7 +104,7 @@ export default function StudentDashboard() {
       showMessage('error', 'New passwords do not match');
       return;
     }
-    
+
     setIsUpdating(true);
     try {
       await api.put('/profile/change-password', {
@@ -154,58 +170,77 @@ export default function StudentDashboard() {
       {success && <div className="alert alert-success">{success}</div>}
 
       <div className="card">
-        <h2 style={{ marginBottom: '24px' }}>Active Assignments</h2>
-        {assignments.length === 0 ? (
-          <p style={{ color: 'var(--text-light)', textAlign: 'center', padding: '32px' }}>You have no active rotation assignments at this time.</p>
-        ) : (
-          <div style={{ display: 'grid', gap: '24px', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))' }}>
-            {assignments.map(a => {
-              const todayRecord = getTodayRecord(a.id);
-              return (
-              <div key={a.id} className="card-hover" style={{ border: '1.5px solid #FFEBEE', borderRadius: '20px', padding: '24px', background: 'white' }}>
-                <h3 style={{ margin: '0 0 16px 0', fontSize: '1.4rem', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-dark)' }}>
-                  <Hospital size={22} color="#FFB6C1" /> {a.area?.name}
-                </h3>
-                
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '20px' }}>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-dark)' }}>
-                    <CalendarRange size={18} color="#FFB6C1" /> 
-                    <span style={{ fontWeight: 600 }}>Date:</span> {a.start_date} - {a.end_date}
-                  </span>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-dark)' }}>
-                    <Clock size={18} color="#FFB6C1" /> 
-                    <span style={{ fontWeight: 600 }}>Shift:</span> {a.shift_start_time} - {a.shift_end_time} ({a.shift_type})
-                  </span>
-                </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+          <h2 style={{ margin: 0 }}>Active Assignments</h2>
+          {assignments.length > 0 && (
+            <button
+              onClick={() => setShowCoStudents(!showCoStudents)}
+              className="btn-secondary"
+              style={{ display: 'flex', alignItems: 'center', gap: '8px', border: '1.5px solid #FFEBEE', color: 'var(--text-dark)', padding: '10px 20px' }}
+            >
+              {showCoStudents ? '← Back to Assignments' : 'View Co-Students →'}
+            </button>
+          )}
+        </div>
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                  <span className="badge badge-active">{a.status}</span>
-                </div>
+        {!showCoStudents ? (
+          <>
+            {assignments.length === 0 ? (
+              <p style={{ color: 'var(--text-light)', textAlign: 'center', padding: '32px' }}>You have no active rotation assignments at this time.</p>
+            ) : (
+              <div style={{ display: 'grid', gap: '24px', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))' }}>
+                {assignments.map(a => {
+                  const todayRecord = getTodayRecord(a.id);
+                  return (
+                    <div key={a.id} className="card-hover" style={{ border: '1.5px solid #FFEBEE', borderRadius: '20px', padding: '24px', background: 'white' }}>
+                      <h3 style={{ margin: '0 0 16px 0', fontSize: '1.4rem', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-dark)' }}>
+                        <Hospital size={22} color="#FFB6C1" /> {a.area?.name}
+                      </h3>
 
-                <div style={{ background: '#FFF5F7', padding: '20px', borderRadius: '16px', marginTop: '16px', border: '1px dashed #FFB6C1' }}>
-                  <h4 style={{ margin: '0 0 16px 0', fontSize: '0.85rem', color: '#FF8BA7', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Daily Attendance</h4>
-                  <div style={{ display: 'flex', gap: '12px' }}>
-                    <button 
-                      className="btn-primary" 
-                      style={{ flex: 1, padding: '10px', fontSize: '0.9rem' }}
-                      onClick={() => handleClockInOut(a.id, 'in')}
-                      disabled={todayRecord?.actual_time_in}
-                    >
-                      {todayRecord?.actual_time_in ? `In: ${todayRecord.actual_time_in}` : 'Clock In'}
-                    </button>
-                    <button 
-                      className="btn-secondary" 
-                      style={{ flex: 1, padding: '10px', fontSize: '0.9rem' }}
-                      onClick={() => handleClockInOut(a.id, 'out')}
-                      disabled={!todayRecord?.actual_time_in || todayRecord?.actual_time_out}
-                    >
-                      {todayRecord?.actual_time_out ? `Out: ${todayRecord.actual_time_out}` : 'Clock Out'}
-                    </button>
-                  </div>
-                </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '20px' }}>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-dark)' }}>
+                          <CalendarRange size={18} color="#FFB6C1" />
+                          <span style={{ fontWeight: 600 }}>Date:</span> {a.start_date} - {a.end_date}
+                        </span>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-dark)' }}>
+                          <Clock size={18} color="#FFB6C1" />
+                          <span style={{ fontWeight: 600 }}>Shift:</span> {a.shift_start_time} - {a.shift_end_time} ({a.shift_type})
+                        </span>
+                      </div>
+
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                        <span className="badge badge-active">{a.status}</span>
+                      </div>
+
+                      <div style={{ background: '#FFF5F7', padding: '20px', borderRadius: '16px', marginTop: '16px', border: '1px dashed #FFB6C1' }}>
+                        <h4 style={{ margin: '0 0 16px 0', fontSize: '0.85rem', color: '#FF8BA7', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Daily Attendance</h4>
+                        <div style={{ display: 'flex', gap: '12px' }}>
+                          <button
+                            className="btn-primary"
+                            style={{ flex: 1, padding: '10px', fontSize: '0.9rem' }}
+                            onClick={() => handleClockInOut(a.id, 'in')}
+                            disabled={todayRecord?.actual_time_in}
+                          >
+                            {todayRecord?.actual_time_in ? `In: ${todayRecord.actual_time_in}` : 'Clock In'}
+                          </button>
+                          <button
+                            className="btn-secondary"
+                            style={{ flex: 1, padding: '10px', fontSize: '0.9rem' }}
+                            onClick={() => handleClockInOut(a.id, 'out')}
+                            disabled={!todayRecord?.actual_time_in || todayRecord?.actual_time_out}
+                          >
+                            {todayRecord?.actual_time_out ? `Out: ${todayRecord.actual_time_out}` : 'Clock Out'}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
-            )})}
-          </div>
+            )}
+          </>
+        ) : (
+          <AreaStudentsView adminView={false} onlyMyAreas={true} />
         )}
       </div>
 
@@ -218,7 +253,7 @@ export default function StudentDashboard() {
                 <X size={24} />
               </button>
             )}
-            
+
             {forcePasswordChange ? (
               <div style={{ textAlign: 'center', marginBottom: '24px' }}>
                 <ShieldCheck size={48} color="#FF8BA7" style={{ marginBottom: '16px' }} />
@@ -258,32 +293,32 @@ export default function StudentDashboard() {
               <h4 style={{ marginBottom: '16px', color: 'var(--text-dark)', borderBottom: '1.5px solid #FFF5F7', paddingBottom: '8px' }}>Change Password</h4>
               <div style={{ marginBottom: '16px' }}>
                 <label className="label">Current Password</label>
-                <input 
-                  type="password" 
-                  className="input-field" 
-                  required 
+                <input
+                  type="password"
+                  className="input-field"
+                  required
                   value={passwordData.current_password}
-                  onChange={e => setPasswordData({...passwordData, current_password: e.target.value})}
+                  onChange={e => setPasswordData({ ...passwordData, current_password: e.target.value })}
                 />
               </div>
               <div style={{ marginBottom: '16px' }}>
                 <label className="label">New Password</label>
-                <input 
-                  type="password" 
-                  className="input-field" 
-                  required 
+                <input
+                  type="password"
+                  className="input-field"
+                  required
                   value={passwordData.new_password}
-                  onChange={e => setPasswordData({...passwordData, new_password: e.target.value})}
+                  onChange={e => setPasswordData({ ...passwordData, new_password: e.target.value })}
                 />
               </div>
               <div style={{ marginBottom: '24px' }}>
                 <label className="label">Confirm New Password</label>
-                <input 
-                  type="password" 
-                  className="input-field" 
-                  required 
+                <input
+                  type="password"
+                  className="input-field"
+                  required
                   value={passwordData.confirm_password}
-                  onChange={e => setPasswordData({...passwordData, confirm_password: e.target.value})}
+                  onChange={e => setPasswordData({ ...passwordData, confirm_password: e.target.value })}
                 />
               </div>
               <button type="submit" className="btn-primary" style={{ width: '100%' }} disabled={isUpdating}>

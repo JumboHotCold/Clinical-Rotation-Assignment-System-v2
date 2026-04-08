@@ -140,3 +140,46 @@ class Token(BaseModel):
     role: str
     user_id: int
     must_change_password: bool
+
+# --- Area Students & Schedules ---
+
+class StudentScheduleInfo(BaseModel):
+    """Student with their assignment/schedule info for a specific area"""
+    model_config = ConfigDict(from_attributes=True)
+    
+    # Student info
+    id: int  # student id
+    first_name: str
+    last_name: str
+    student_id_number: str
+    program: str
+    year_level: str
+    contact_email: str
+    contact_phone: str
+    
+    # Assignment info
+    assignment_id: int
+    start_date: date
+    end_date: date
+    shift_start_time: time
+    shift_end_time: time
+    shift_type: str
+    status: str
+
+class ScheduleGroup(BaseModel):
+    """Group of students assigned to the same schedule (time slot)"""
+    shift_type: str
+    shift_start_time: time
+    shift_end_time: time
+    start_date: date
+    end_date: date
+    students: List[StudentScheduleInfo]
+
+class AreaStudentsSchedule(BaseModel):
+    """Area with all students assigned, grouped by schedule"""
+    model_config = ConfigDict(from_attributes=True)
+    
+    area_id: int
+    area_name: str
+    max_capacity: int
+    schedules: List[ScheduleGroup] = []

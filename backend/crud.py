@@ -335,3 +335,127 @@ def clock_out(db: Session, assignment_id: int, date_val: datetime.date, time_out
     db.commit()
     db.refresh(record)
     return record
+
+# --- Area Students & Schedules ---
+
+def get_students_by_area(db: Session, area_id: int):
+    """
+    Get all students assigned to a specific area, grouped by their schedule.
+    Returns AreaStudentsSchedule with students grouped by shift time.
+    """
+    # Get the area
+    area = db.query(models.ClinicalArea).filter(models.ClinicalArea.id == area_id).first()
+    if not area:
+        return None
+    
+    # Get all active assignments for this area
+    assignments = db.query(models.Assignment).options(
+        joinedload(models.Assignment.student).joinedload(models.Student.user),
+        joinedload(models.Assignment.area)
+    ).filter(
+        models.Assignment.area_id == area_id,
+        models.Assignment.status == "Active"
+    ).all()
+    
+    # Group assignments by schedule (shift_type, start_time, end_time, start_date, end_date)
+    schedule_groups = {}
+    
+    for assignment in assignments:
+        # Create a key for the schedule
+        schedule_key = (
+            assignment.shift_type,
+            str(assignment.shift_start_time),
+            str(assignment.shift_end_time),
+            str(assignment.start_date),
+            str(assignment.end_date)
+        )
+        
+        if schedule_key not in schedule_groups:
+            schedule_groups[schedule_key] = {
+                'shift_type': assignment.shift_type,
+                'shift_start_time': assignment.shift_start_time,
+                'shift_end_time': assignment.shift_end_time,
+                'start_date': assignment.start_date,
+                'end_date': assignment.end_date,
+                'students': []
+            }
+        
+        # Add student info to this schedule
+        student_info = {
+            'id': assignment.student.id,
+            'first_name': assignment.student.first_name,
+            'last_name': assignment.student.last_name,
+            'student_id_number': assignment.student.student_id_number,
+            'program': assignment.student.program,
+            'year_level': assignment.student.year_level,
+            'contact_email': assignment.student.contact_email,
+            'contact_phone': assignment.student.contact_phone,
+            'assignment_id': assignment.id,
+            'start_date': assignment.start_date,
+            'end_date': assignment.end_date,
+            'shift_start_time': assignment.shift_start_time,
+            'shift_end_time': assignment.shift_end_time,
+            'shift_type': assignment.shift_type,
+            'status': assignment.status
+        }
+        schedule_groups[schedule_key]['students'].append(student_info)
+    
+    # Convert to list of ScheduleGroup objects
+    schedules = list(schedule_groups.values())
+    
+    # Sort schedules by start_date and then by shift_start_time
+    schedules.sort(key=lambda x: (x['start_date'], x['shift_start_time']))
+    
+    return {
+        'area_id': area.id,
+        'area_name': area.name,
+        'max_capacity': area.max_capacity,
+        'schedules': schedules
+    }
+
+def get_student_coassignees(db: Session, student_id: int):
+    """
+    Get all areas where a student is assigned and their co-students for each area/schedule.
+    Returns a list of AreaStudentsSchedule objects filtered to only show the student's assignments and co-students.
+    """
+    # Get all active assignments for this student
+    student_assignments = db.query(models.Assignment).options(
+        joinedload(models.Assignment.area),
+        joinedload(models.Assignment.student)
+    ).filter(
+        models.Assignment.student_id == student_id,
+        models.Assignment.status == "Active"
+    ).all()
+    
+    if not student_assignments:
+        return []
+    
+    result = []
+    
+    # For each assignment area, get all co-students
+    for assignment in student_assignments:
+        area_id = assignment.area_id
+        
+        # Check if we already processed this area
+        area_exists = any(r['area_id'] == area_id for r in result)
+        if area_exists:
+            continue
+        
+        # Get the full area data with all students
+        area_data = get_students_by_area(db, area_id)
+        
+        if area_data:
+            # Filter schedules to only include ones where this student is assigned
+            filtered_schedules = []
+            
+            for schedule in area_data['schedules']:
+                # Check if this student is in this schedule
+                student_in_schedule = any(s['id'] == student_id for s in schedule['students'])
+                
+                if student_in_schedule:
+                    filtered_schedules.append(schedule)
+            
+            area_data['schedules'] = filtered_schedules
+            result.append(area_data)
+    
+    return result

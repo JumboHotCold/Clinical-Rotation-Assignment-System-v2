@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, UsersRound, Hospital, CalendarRange, Plus, AlertTriangle, Trash2, Edit, BarChart, Stethoscope, UserCheck, UserX } from 'lucide-react';
+import { LogOut, UsersRound, Hospital, CalendarRange, Plus, AlertTriangle, Trash2, Edit, BarChart, Stethoscope, UserCheck, UserX, Users } from 'lucide-react';
 import Swal from 'sweetalert2';
 import api from '../api';
+import AreaStudentsView from '../components/AreaStudentsView';
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('assignments');
@@ -53,8 +54,21 @@ export default function AdminDashboard() {
   }, []);
 
   const handleLogout = () => {
-    localStorage.clear();
-    navigate('/login');
+    Swal.fire({
+      title: 'Sign Out?',
+      text: 'Are you sure you want to sign out?',
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#D32F2F',
+      cancelButtonColor: '#6B7280',
+      confirmButtonText: 'Yes, sign out',
+      cancelButtonText: 'Cancel'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        localStorage.clear();
+        navigate('/login');
+      }
+    });
   };
 
   const showMessage = (type, msg) => {
@@ -343,6 +357,9 @@ export default function AdminDashboard() {
         <div className={`tab ${activeTab === 'areas' ? 'active' : ''}`} onClick={() => setActiveTab('areas')}>
           <Hospital size={18} /> Clinical Facilities
         </div>
+        <div className={`tab ${activeTab === 'areaStudents' ? 'active' : ''}`} onClick={() => setActiveTab('areaStudents')}>
+          <Users size={18} /> Area Assignments
+        </div>
       </div>
 
       <div className="card">
@@ -561,6 +578,13 @@ export default function AdminDashboard() {
           </div>
         )}
       </div>
+
+      {/* Area Students Tab */}
+      {activeTab === 'areaStudents' && (
+        <div className="card">
+          <AreaStudentsView adminView={true} />
+        </div>
+      )}
     </div>
   );
 }

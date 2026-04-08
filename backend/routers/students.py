@@ -34,6 +34,24 @@ def create_student(student: schemas.StudentCreate, db: Session = Depends(get_db)
 def read_students(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     return crud.get_students(db, skip=skip, limit=limit)
 
+@router.get("/me/coassignees", response_model=List[schemas.AreaStudentsSchedule])
+def get_my_coassignees(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    """
+    Get all areas assigned to the current student and their co-students for each area/schedule.
+    Only available for students.
+    """
+    if current_user.role != "student":
+        raise HTTPException(status_code=403, detail="Only students can access this endpoint")
+    
+    # Get the student profile
+    student = db.query(models.Student).filter(models.Student.user_id == current_user.id).first()
+    if not student:
+        raise HTTPException(status_code=404, detail="Student profile not found")
+    
+    # Get the student's co-assignees
+    coassignees = crud.get_student_coassignees(db, student.id)
+    return coassignees
+
 @router.put("/{student_id}", response_model=schemas.Student)
 def update_student(student_id: int, updates: schemas.StudentUpdate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_admin_user)):
     student = crud.update_student(db, student_id, updates)
