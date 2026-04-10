@@ -1,0 +1,56 @@
+# ============================================
+# Clinical Rotation Assignment System v2
+# Root Requirements File
+# ============================================
+# This file contains all Python dependencies for the backend.
+# Node.js dependencies are managed in frontend/package.json
+# 
+# Installation:
+#   pip install -r requirements.txt
+# ============================================
+
+# ============================================
+# BACKEND DEPENDENCIES
+# ============================================
+
+# FastAPI Framework & Server
+fastapi[all]>=0.100.0
+uvicorn[standard]>=0.24.0
+
+# Database & ORM
+sqlalchemy>=2.0.0
+sqlalchemy-utils>=0.41.0
+
+# Authentication & Security
+bcrypt==3.1.7
+passlib[bcrypt]>=1.7.4
+python-jose[cryptography]>=3.3.0
+cryptography>=41.0.0
+
+# HTTP & Multipart
+python-multipart>=0.0.6
+requests>=2.31.0
+
+# Email Service
+sendgrid>=6.10.0
+
+# Environment Variables
+python-dotenv>=1.0.0
+
+# ============================================
+# DEVELOPMENT DEPENDENCIES (Optional)
+# ============================================
+# Uncomment below for development:
+# pytest>=7.4.0
+# pytest-asyncio>=0.21.0
+# black>=23.0.0
+# flake8>=6.0.0
+# mypy>=1.5.0
+
+# ============================================
+# NOTES
+# ============================================
+# - Frontend dependencies are in: frontend/package.json
+# - Install Node.js separately (16+ required)
+# - Python version: 3.8+ recommended
+# - Database: SQLite (included with Python)
